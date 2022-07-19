@@ -1,22 +1,22 @@
 from pprint import pprint
 
 
-def find_next_empty(puzzle):
+def find_empty_space(sudoku):
     
 
    
     for r in range(9):
         for c in range(9):
-            if puzzle[r][c] == -1:
+            if sudoku[r][c] == -1:
                 return r, c
 
     return None, None  # if no spaces in the puzzle are empty (-1)
 
-def is_valid(puzzle, guess, row, col):
+def validity(puzzle, guess, row, col):
    
     # returns True or False
 
-    row_vals = puzzle[row]
+    row_vals = sudoku[row]
     if guess in row_vals:
         return False 
 
@@ -31,25 +31,25 @@ def is_valid(puzzle, guess, row, col):
 
     for r in range(row_start, row_start + 3):
         for c in range(col_start, col_start + 3):
-            if puzzle[r][c] == guess:
+            if sudoku[r][c] == guess:
                 return False
 
     return True
 
-def solve_sudoku(puzzle):
-    row, col = find_next_empty(puzzle)
+def solve_sudoku(sudoku):
+    row, col = find_empty_space(sudoku)
     
     if row is None:
         return True 
     
     
     for guess in range(1, 10): 
-        if is_valid(puzzle, guess, row, col):
+        if validity(sudoku, guess, row, col):
             puzzle[row][col] = guess
-            if solve_sudoku(puzzle): #recursive call for solver
+            if solve_sudoku(sudoku): #recursive call for solver
                 return True
         
-        puzzle[row][col] = -1
+        sudoku[row][col] = -1
 
    
     return False #no possible solution
