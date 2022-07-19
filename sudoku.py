@@ -12,7 +12,7 @@ def find_empty_space(sudoku):
 
     return None, None  # if no spaces in the puzzle are empty (-1)
 
-def validity(puzzle, guess, row, col):
+def validity(sudoku, guess, row, col):
    
     # returns True or False
 
@@ -23,7 +23,7 @@ def validity(puzzle, guess, row, col):
    
     col_vals = []
     for i in range(9):
-        col_vals.append(puzzle[i][col])
+        col_vals.append(sudoku[i][col])
 
     
     row_start = (row // 3) * 3 
@@ -45,7 +45,7 @@ def solve_sudoku(sudoku):
     
     for guess in range(1, 10): 
         if validity(sudoku, guess, row, col):
-            puzzle[row][col] = guess
+            sudoku[row][col] = guess
             if solve_sudoku(sudoku): #recursive call for solver
                 return True
         
