@@ -4,6 +4,11 @@ import numpy
 import cv2
 import operator
 from matplotlib import pyplot as plt
+import imageio
+
+def read_from_file(file_object):
+    img = imageio.imread(file_object, pilmode="RGB")
+    return img
 
 def distBetween(one,two):
     a = two[0] - one[0]
@@ -21,15 +26,83 @@ def show_image(img):
 #    cv2.destroyAllWindows()  # Close all windows
     return img
 
+def scaleAndCentre(image,size, margin=0, background = 0):
+    height, width = image.shape[:2]
+
+    
+    def centre(length):
+        if length % 2 == 0:
+            side1 = int((size-length) / 2)
+            side2 = side1 
+        else:
+            side1 = int((size-length) / 2)
+            side2 = side1 + 1
+        return side1, side2
+
+    def scale( r, x):
+        return int(r*x)
+
+    #if height>width:
+        #t_pad = int(margin/2)
+        #b_pad = t_pad 
+        #ratio = (size-margin)/height
+        #width , height = scale(ratio, width), scale(ratio, height)
+        #t_pad, b_pad = centre(height)
+    
+    #else:
+        #l_pad = int(margin/2)
+        #r_pad = l_pad
+        #ratio = (size - margin)/width
+        #width, height = scale(ratio, width), scale(ratio, height)
+        #t_pad, b_pad = centre(height)
+    
+    if height>width:
+        t_pad = int(margin/2)
+        b_pad=t_pad
+        ratio = (size - margin)/height
+        width, height = scale(ratio, width), scale(ratio,height)
+        l_pad, r_pad = centre(width)
+    else:
+        l_pad = int(margin/2)
+        r_pad = l_pad
+        ratio = (size - margin)/width
+        width, height = scale(ratio, width), scale(ratio,height)
+        t_pad, b_pad = centre(height)
+    
+    image = cv2.resize(image,(width,height))
+    image = cv2.copyMakeBorder(image, t_pad, b_pad, l_pad, r_pad, cv2.BORDER_CONSTANT, None, background)
+    return cv2.resize(image,(size,size))
+
+
 def displayFinal(numbers, colour=255):
     rows = []
-    with_border = [cv2.copyMakeBorder(img.copy(), 1, 1, 1, 1, cv2.BORDER_CONSTANT, None, colour) for img in digits]
+    with_border = [cv2.copyMakeBorder(img.copy(), 1, 1, 1, 1, cv2.BORDER_CONSTANT, None, colour) for img in numbers]
     for i in range(9):
         row = numpy.concatenate(with_border[i * 9:((i + 1) * 9)], axis=1)
         rows.append(row)
     img = show_image(numpy.concatenate(rows))
     return img
 
+#obtain the digit box from the whole square 
+def extractNumber(image,rect, size):
+    #obtain the digit box from the whole square 
+    number = cut_from_rect(image,rect)
+    
+    #use fill feature finding to get the largest feature in the middle  of the box
+    #margin used to define an area where we can expect to find a pixel from the number.
+    height, width = number.shape[:2]
+    margin = int(numpy.mean([height,width]) / 2.5)
+    _, bbox, seed = findLargestFeature(number, [margin,margin], [width-margin, height-margin])
+    number = cut_from_rect(number, bbox)
+
+    #setup the number so its suitable for the ML process
+    width = bbox[1][0] - bbox[0][0]
+    height = bbox[1][1] - bbox[0][1]
+
+    if width>0 and height>0 and (width*height) > 100 and len(number) > 0:
+        return scaleAndCentre(number, size, 4)
+    else:
+        return numpy.zeros((size,size), numpy.uint8)
 
 #obtain numbers from cells and build an array
 def getNumber(image,squares, size):
@@ -38,40 +111,7 @@ def getNumber(image,squares, size):
     for square in squares:
         numbers.append(extractNumber(image,square,size))
     return numbers
-
-def scaleAndCentre(image,size, margin=0, background = 0):
-    height, width = image.shape[:2]
-
-    def centre(length):
-        if length % 2 == 0:
-            side1 = int((size-length) / 2)
-            side2 = side1 
-        else:
-            side1 = int((size-length) / 2)
-            side2 = side1 + 1
-        return size1, size2
-
-    def scale( r, x):
-        return int(r*x)
-
-    if height>width:
-        t_pad = int(margin/2)
-        b_pad = t_pad 
-        ratio = (size-margin)/height
-        width , height = scale(ratio, width), scale(ratio, height)
-        t_pad, b_pad = centre(height)
-    
-    else:
-        l_pad = int(margin/2)
-        r_pad = l_pad
-        ratio = (size - margin)/width
-        width, height = scale(ratio, width), scale(ratio, height)
-        t_pad, b_pad = centre(height)
-    
-    image = cv2.resize(image,(width,height))
-    image = cv2.copyMakeBorder(image, t_pad, b_pad, l_pad, r_pad, cv2.BORDER_CONSTANT, None, background)
-    return cv2.resize(image,(size,size))
-        
+       
 
 
 def findLargestFeature(img, scan_tl= None, scan_br = None):
@@ -180,35 +220,14 @@ def cut_from_rect(img, rect):
 	return img[int(rect[0][1]):int(rect[1][1]), int(rect[0][0]):int(rect[1][0])]
 
 
-#obtain the digit box from the whole square 
-
-def extractNumber(image,rect, size):
-    #obtain the digit box from the whole square 
-    number = cut_from_rect(image,rect)
-    
-    #use fill feature finding to get the largest feature in the middle  of the box
-    #margin used to define an area where we can expect to find a pixel from the number.
-    height, width = number.shape[:2]
-    margin = int(numpy.mean([height,width]) / 2.5)
-    _, bbox, seed = findLargestFeature(number, [margin,margin], [width-margin, height-margin])
-    number = cut_from_rect(number, bbox)
-
-    #setup the number so its suitable for the ML process
-    width = bbox[1][0] - bbox[0][0]
-    height = bbox[1][1] - bbox[0][1]
-
-    if width>0 and height>0 and (width*height) > 100 and len(number) > 0:
-        return scaleAndCentre(number, size, 4)
-    else:
-        return numpy.zeros((size,size), numpy.uint8)
-
-
-def readPuzzle(path):
-    image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    processImage = processImage(image)
+def readPuzzle(image):
+    #image = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    processImage = processPuzzle(image)
     cornersOfImage = findCorners(processImage)
     cropAndWarpImage = cropAndWarp(image, cornersOfImage)
     squares = inferSquare(cropAndWarpImage)
     numbers = getNumber(cropAndWarpImage, squares, 28)
     final = displayFinal(numbers)
+    cv2.imshow('final',final)
     return final
